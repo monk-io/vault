@@ -1,0 +1,4 @@
+LOAD vault.yaml
+LOAD vault-example.yaml
+LOAD vault-stack.yaml
+ENTRY vault/stack-local
