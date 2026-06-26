@@ -1,0 +1,140 @@
+namespace: vault
+
+stack-vault:
+  defines: runnable
+  inherits: vault/base
+  metadata:
+    name: HashiCorp Vault Standalone Server
+    description: |
+      Production-intended standalone Vault server with durable integrated storage.
+      It initializes and unseals itself using generated Vault material persisted in
+      the workload volume, keeps direct services private, and exposes the
+      authenticated Vault API/UI only through Monk ingress.
+    tags: vault, secrets, security, standalone, production
+    website: https://developer.hashicorp.com/vault
+    source: https://github.com/hashicorp/vault
+    publisher: monk.io
+    private: false
+  variables:
+    vault-storage-volume-name:
+      type: string
+      value: vault-stack
+      description: Monk volume subdirectory used for standalone production Vault data and generated init artifacts.
+    vault-auto-init:
+      type: string
+      value: "true"
+      env: VAULT_AUTO_INIT
+      description: Initializes and unseals standalone Vault with generated sensitive material stored only in the workload volume.
+    vault-api-addr:
+      type: string
+      value: http://0.0.0.0:8200
+      env: VAULT_API_ADDR
+      description: Vault API address advertised by the standalone server. In production inheritance, set this to the ingress URL.
+  services:
+    http:
+      container: vault
+      port: <- $vault-port
+      protocol: tcp
+      publish: false
+      description: Vault HTTP API and web UI service exposed only through Monk ingress in the production stack.
+      ingress-routes:
+        vault:
+          path-prefix: /
+    cluster:
+      container: vault
+      port: <- $vault-cluster-port
+      protocol: tcp
+      publish: false
+      description: Private Vault cluster service used by standalone integrated storage.
+  checks:
+    readiness:
+      code: http-get-service("vault/stack-vault", "http", "/v1/sys/health") get-member("status") 200
+      period: 10
+      initialDelay: 15
+      attempts: 36
+
+stack:
+  defines: process-group
+  metadata:
+    name: HashiCorp Vault Standalone Stack
+    description: |
+      Secure production-oriented standalone Vault stack. The Vault service is
+      durable, initialized, unsealed, and not published directly; authenticated
+      access is intended through Monk ingress on ingress-capable targets.
+    tags: vault, secrets, security, standalone, production
+    website: https://developer.hashicorp.com/vault
+    source: https://github.com/hashicorp/vault
+    publisher: monk.io
+    private: false
+  runnable-list:
+    - vault/stack-vault
+
+stack-local-vault:
+  defines: runnable
+  inherits: vault/base
+  metadata:
+    name: HashiCorp Vault Local Standalone Server
+    description: |
+      Local verification flavor of the standalone Vault stack. It uses the same
+      durable integrated storage and initialization flow, but publishes a
+      non-privileged host port because Monk ingress is unavailable locally.
+    tags: vault, secrets, security, standalone, local
+    website: https://developer.hashicorp.com/vault
+    source: https://github.com/hashicorp/vault
+    publisher: monk.io
+    private: false
+  variables:
+    vault-storage-volume-name:
+      type: string
+      value: vault-stack-local
+      description: Monk volume subdirectory used for local standalone Vault data and generated init artifacts.
+    vault-auto-init:
+      type: string
+      value: "true"
+      env: VAULT_AUTO_INIT
+      description: Initializes and unseals local standalone Vault so readiness and external health can be verified.
+    host-port:
+      type: int
+      value: 8221
+      description: Non-privileged host port published for local standalone verification.
+    vault-api-addr:
+      type: string
+      value: http://127.0.0.1:8221
+      env: VAULT_API_ADDR
+      description: Local Vault API address advertised by the local standalone flavor.
+  services:
+    http:
+      container: vault
+      port: <- $vault-port
+      protocol: tcp
+      publish: true
+      host-port: <- $host-port
+      description: Published local Vault HTTP API and web UI service for standalone verification.
+    cluster:
+      container: vault
+      port: <- $vault-cluster-port
+      protocol: tcp
+      publish: false
+      description: Private Vault cluster service used by local standalone integrated storage.
+  checks:
+    readiness:
+      code: http-get-service("vault/stack-local-vault", "http", "/v1/sys/health") get-member("status") 200
+      period: 10
+      initialDelay: 15
+      attempts: 36
+
+stack-local:
+  defines: process-group
+  metadata:
+    name: HashiCorp Vault Standalone Local Stack
+    description: |
+      Local flavor of the standalone Vault stack for proof on a workstation. It
+      publishes Vault on a non-privileged host port and should not be used as the
+      production exposure pattern.
+    tags: vault, secrets, security, standalone, local
+    website: https://developer.hashicorp.com/vault
+    source: https://github.com/hashicorp/vault
+    publisher: monk.io
+    private: false
+  runnable-list:
+    - vault/stack-local-vault

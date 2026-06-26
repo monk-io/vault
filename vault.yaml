@@ -1,0 +1,149 @@
+namespace: vault
+
+base:
+  defines: runnable
+  metadata:
+    name: HashiCorp Vault Base
+    description: |
+      Reusable HashiCorp Vault component using the public hashicorp/vault image.
+      It runs a single-node Vault server with integrated Raft storage persisted on
+      a Monk volume. Vault has no required deployable backing service by default;
+      production HA variants can inherit this base and replace storage with Consul
+      or an external storage backend when that operational model is required.
+    tags: vault, secrets, security, raft, component
+    website: https://developer.hashicorp.com/vault
+    source: https://github.com/hashicorp/vault
+    publisher: monk.io
+    private: false
+  variables:
+    vault-image-tag:
+      type: string
+      value: latest
+      description: Public hashicorp/vault Docker image tag.
+    vault-port:
+      type: int
+      value: 8200
+      env: VAULT_PORT
+      description: Internal Vault API port.
+    vault-cluster-port:
+      type: int
+      value: 8201
+      env: VAULT_CLUSTER_PORT
+      description: Internal Vault cluster listener port used by integrated storage.
+    vault-api-addr:
+      type: string
+      value: http://0.0.0.0:8200
+      env: VAULT_API_ADDR
+      description: Vault API address advertised by the server. In production inheritance, set this to the ingress or load balancer URL.
+    vault-cluster-addr:
+      type: string
+      value: http://0.0.0.0:8201
+      env: VAULT_CLUSTER_ADDR
+      description: Vault cluster address advertised by the server.
+    vault-node-id:
+      type: string
+      value: vault-1
+      env: VAULT_NODE_ID
+      description: Single-node Raft node identifier.
+    vault-storage-volume-name:
+      type: string
+      value: vault-base
+      description: Monk volume subdirectory used for persistent Raft data and first initialization artifacts.
+    vault-auto-init:
+      type: string
+      value: "false"
+      env: VAULT_AUTO_INIT
+      description: When true, initializes Vault with one key share and unseals it on startup. Generated root and unseal material are sensitive and stored only in the workload volume.
+    vault-log-level:
+      type: string
+      value: info
+      env: VAULT_LOG_LEVEL
+      description: Vault server log level.
+  containers:
+    vault:
+      image: hashicorp/vault
+      image-tag: <- $vault-image-tag
+      restart: unless-stopped
+      paths:
+        - <- `${volume-path}/${vault-storage-volume-name}/data:/vault/data`
+        - <- `${volume-path}/${vault-storage-volume-name}/init:/vault/init`
+      bash: |
+        set -eu
+
+        mkdir -p /vault/config /vault/data /vault/init
+
+        cat > /vault/config/monk.hcl <<EOF
+        ui = true
+        disable_mlock = true
+        api_addr = "$VAULT_API_ADDR"
+        cluster_addr = "$VAULT_CLUSTER_ADDR"
+
+        storage "raft" {
+          path = "/vault/data"
+          node_id = "$VAULT_NODE_ID"
+        }
+
+        listener "tcp" {
+          address = "0.0.0.0:$VAULT_PORT"
+          cluster_address = "0.0.0.0:$VAULT_CLUSTER_PORT"
+          tls_disable = 1
+        }
+        EOF
+
+        export VAULT_ADDR="http://127.0.0.1:$VAULT_PORT"
+        vault server -config=/vault/config/monk.hcl &
+        vault_pid="$!"
+
+        shutdown() {
+          kill "$vault_pid" 2>/dev/null || true
+          wait "$vault_pid" 2>/dev/null || true
+        }
+        trap shutdown INT TERM
+
+        for i in $(seq 1 90); do
+          if vault status >/tmp/vault-status 2>&1 || grep -q "Initialized" /tmp/vault-status; then
+            break
+          fi
+          sleep 1
+        done
+
+        if [ "${VAULT_AUTO_INIT:-false}" = "true" ]; then
+          status_json="$(vault status -format=json 2>/dev/null || true)"
+          if ! echo "$status_json" | grep -q '"initialized"[[:space:]]*:[[:space:]]*true'; then
+            vault operator init -key-shares=1 -key-threshold=1 -format=json > /vault/init/init.json
+            chmod 0600 /vault/init/init.json
+          fi
+
+          if [ -f /vault/init/init.json ]; then
+            unseal_key="$(awk '/"unseal_keys_b64"/ { getline; gsub(/[", ]/, ""); print; exit }' /vault/init/init.json)"
+            for i in $(seq 1 10); do
+              status_json="$(vault status -format=json 2>/dev/null || true)"
+              if echo "$status_json" | grep -q '"sealed"[[:space:]]*:[[:space:]]*false'; then
+                break
+              fi
+              vault operator unseal "$unseal_key" >/dev/null || true
+              sleep 2
+            done
+          fi
+        fi
+
+        wait "$vault_pid"
+  services:
+    http:
+      container: vault
+      port: <- $vault-port
+      protocol: tcp
+      publish: false
+      description: Private Vault HTTP API and web UI service for Monk connections and inherited templates.
+    cluster:
+      container: vault
+      port: <- $vault-cluster-port
+      protocol: tcp
+      publish: false
+      description: Private Vault cluster service used by integrated storage.
+  checks:
+    readiness:
+      code: http-get-service("vault/base", "http", "/v1/sys/health") get-member("status") 200
+      period: 10
+      initialDelay: 15
+      attempts: 30

@@ -1,0 +1,55 @@
+namespace: vault
+
+example:
+  defines: runnable
+  inherits: vault/base
+  metadata:
+    name: HashiCorp Vault Component Example
+    description: |
+      Local component example that inherits the reusable Vault base, enables the
+      documented first-run initialization and unseal flow, and publishes a
+      non-privileged host port for external smoke testing.
+    tags: vault, secrets, security, component, example, local
+    website: https://developer.hashicorp.com/vault
+    source: https://github.com/hashicorp/vault
+    publisher: monk.io
+    private: false
+  variables:
+    vault-storage-volume-name:
+      type: string
+      value: vault-example
+      description: Monk volume subdirectory used for the component example Vault data and generated init artifacts.
+    vault-auto-init:
+      type: string
+      value: "true"
+      env: VAULT_AUTO_INIT
+      description: Initializes and unseals the example automatically so deployment readiness and external health can be verified locally.
+    host-port:
+      type: int
+      value: 8220
+      description: Non-privileged host port published for local component example verification.
+    vault-api-addr:
+      type: string
+      value: http://127.0.0.1:8220
+      env: VAULT_API_ADDR
+      description: Local Vault API address advertised by the component example.
+  services:
+    http:
+      container: vault
+      port: <- $vault-port
+      protocol: tcp
+      publish: true
+      host-port: <- $host-port
+      description: Published local Vault HTTP API and web UI service for component example verification.
+    cluster:
+      container: vault
+      port: <- $vault-cluster-port
+      protocol: tcp
+      publish: false
+      description: Private Vault cluster service used by the component example integrated storage.
+  checks:
+    readiness:
+      code: http-get-service("vault/example", "http", "/v1/sys/health") get-member("status") 200
+      period: 10
+      initialDelay: 15
+      attempts: 36
