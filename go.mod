@@ -257,8 +257,6 @@ require (
 )
 
 require (
-	code.dny.dev/ssrf v0.2.0 // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/internal v1.1.0 // indirect
 	github.com/andybalholm/brotli v1.2.0 // indirect
 	// We're currently pulling v0.23.0 + a 32 bit fix: https://github.com/apache/thrift/commit/d2acd3c49e5832cb0179f72b111c4ad5bd89c4c5
 	// until a new version is release.
@@ -528,7 +526,7 @@ require (
 	github.com/nicolai86/scaleway-sdk v1.10.2-0.20180628010248-798f60e20bb2 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
-	github.com/opencontainers/runc v1.2.8 // indirect
+	github.com/opencontainers/runc v1.3.6 // indirect
 	github.com/opentracing/opentracing-go v1.2.1-0.20220228012449-10b1cf09e00b // indirect
 	github.com/oracle/oci-go-sdk/v60 v60.0.0 // indirect
 	github.com/packethost/packngo v0.1.1-0.20180711074735-b9cb5096f54c // indirect
