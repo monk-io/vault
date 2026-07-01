@@ -34,7 +34,6 @@ example:
       container: vault
       port: <- $vault-port
       protocol: tcp
-      publish: true
       host-port: <- $host-port
       description: Published local Vault HTTP API and web UI service for component example verification.
     cluster:
