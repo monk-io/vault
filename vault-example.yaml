@@ -15,10 +15,6 @@ example:
     publisher: monk.io
     private: false
   variables:
-    vault-storage-volume-name:
-      type: string
-      value: vault-example
-      description: Monk volume subdirectory used for the component example Vault data and generated init artifacts.
     vault-auto-init:
       type: string
       value: "true"

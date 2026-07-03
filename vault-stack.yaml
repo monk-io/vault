@@ -16,10 +16,6 @@ stack-vault:
     publisher: monk.io
     private: false
   variables:
-    vault-storage-volume-name:
-      type: string
-      value: vault-stack
-      description: Monk volume subdirectory used for standalone production Vault data and generated init artifacts.
     vault-auto-init:
       type: string
       value: "true"
@@ -84,10 +80,6 @@ stack-local-vault:
     publisher: monk.io
     private: false
   variables:
-    vault-storage-volume-name:
-      type: string
-      value: vault-stack-local
-      description: Monk volume subdirectory used for local standalone Vault data and generated init artifacts.
     vault-auto-init:
       type: string
       value: "true"

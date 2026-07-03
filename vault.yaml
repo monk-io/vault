@@ -45,10 +45,6 @@ base:
       value: vault-1
       env: VAULT_NODE_ID
       description: Single-node Raft node identifier.
-    vault-storage-volume-name:
-      type: string
-      value: vault-base
-      description: Monk volume subdirectory used for persistent Raft data and first initialization artifacts.
     vault-auto-init:
       type: string
       value: "false"
@@ -64,9 +60,11 @@ base:
       image: hashicorp/vault
       image-tag: <- $vault-image-tag
       restart: unless-stopped
-      paths:
-        - <- `${volume-path}/${vault-storage-volume-name}/data:/vault/data`
-        - <- `${volume-path}/${vault-storage-volume-name}/init:/vault/init`
+      mounted-volumes:
+        data:
+          path: /vault/data
+        init:
+          path: /vault/init
       bash: |
         set -eu
 
@@ -128,6 +126,11 @@ base:
         fi
 
         wait "$vault_pid"
+  volumes:
+    data:
+      kind: local
+    init:
+      kind: local
   services:
     http:
       container: vault
