@@ -248,7 +248,7 @@ require (
 	gopkg.in/ory-am/dockertest.v3 v3.3.4
 	k8s.io/utils v0.0.0-20251002143259-bc988d571ff4
 	layeh.com/radius v0.0.0-20231213012653-1006025d24f8
-	software.sslmate.com/src/go-pkcs12 v0.7.1
+	software.sslmate.com/src/go-pkcs12 v0.7.2
 )
 
 require (
@@ -257,8 +257,6 @@ require (
 )
 
 require (
-	code.dny.dev/ssrf v0.2.0 // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/internal v1.1.0 // indirect
 	github.com/andybalholm/brotli v1.2.0 // indirect
 	// We're currently pulling v0.23.0 + a 32 bit fix: https://github.com/apache/thrift/commit/d2acd3c49e5832cb0179f72b111c4ad5bd89c4c5
 	// until a new version is release.
