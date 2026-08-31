@@ -145,7 +145,7 @@
     "execa": "^5.1.1",
     "filesize": "~4.2.1",
     "jsdoc-babel": "~0.5.0",
-    "jsondiffpatch": "0.7.3",
+    "jsondiffpatch": "0.7.6",
     "lint-staged": "~16.0.0",
     "loader.js": "~4.7.0",
     "miragejs": "~0.1.48",
